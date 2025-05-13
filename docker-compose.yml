@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  # Dịch vụ FastAPI
+  web:
+    build: .
+    container_name: fastapi-chatbox
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://user:password@db/chatbox
+    networks:
+      - chatbox-network
+
+  # Dịch vụ PostgreSQL
+  db:
+    image: postgres:13
+    container_name: postgres-chatbox
+    environment:
+      POSTGRES_DB: chatbox
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - chatbox-network
+
+# Định nghĩa mạng cho các container giao tiếp
+networks:
+  chatbox-network:
+    driver: bridge
+
+# Định nghĩa volume để lưu trữ dữ liệu của PostgreSQL
+volumes:
+  postgres_data:
