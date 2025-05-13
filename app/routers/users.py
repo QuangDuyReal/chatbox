@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 
 from .. import models, schemas, auth
-from ..database import SessionLocal
+from ..databases import SessionLocal
+from ..oauth2 import get_db, get_current_user
+
 
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -41,3 +43,44 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
     access_token = auth.create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.get("/", response_model=list[schemas.UserOut])
+def list_users(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    if user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admins only")
+    return db.query(models.User).all()
+
+@router.put("/{user_id}", response_model=schemas.UserOut)
+def update_user(
+    user_id: int,
+    user_update: schemas.UserCreate,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    if user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admins only")
+    db_user = db.query(models.User).filter(models.User.user_id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db_user.username = user_update.username
+    db_user.password_hash = auth.get_password_hash(user_update.password_hash)
+    db_user.role = user_update.role
+    db_user.full_name = user_update.full_name
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+@router.delete("/{user_id}", status_code=204)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    if user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admins only")
+    db_user = db.query(models.User).filter(models.User.user_id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(db_user)
+    db.commit()
+    return

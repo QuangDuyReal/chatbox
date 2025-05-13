@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from .. import schemas, crud
-from ..database import get_db
+from ..oauth2 import get_db
 from ..oauth2 import get_current_user
 
 router = APIRouter(prefix="/keybox", tags=["Keybox"])
